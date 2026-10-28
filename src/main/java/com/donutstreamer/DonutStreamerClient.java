@@ -85,6 +85,7 @@ public class DonutStreamerClient implements ClientModInitializer {
         }
         lastNanos = now;
 
+        Actions.checkNewDay();   // fresh session at local midnight (if enabled)
         s.tick();   // debounced background save
         Spotify.setWanted(client.player != null && s.hudVisible && s.cfg(Widgets.W.MUSIC).on);
 
