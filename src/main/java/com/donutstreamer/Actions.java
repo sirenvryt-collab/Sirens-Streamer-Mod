@@ -12,6 +12,7 @@ import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -95,17 +96,80 @@ public final class Actions {
         long now = System.currentTimeMillis();
         if (now <= resetArmedUntil) {
             resetArmedUntil = 0;
-            Session s = s();
-            s.reset();
-            s.save();
-            s.logCsv("RESET", "", 0, 0);
-            limitAlerted = false;
-            goalAlerted = false;
+            startNewSession("RESET");
             bar(Formatting.YELLOW, "Session reset");
         } else {
             resetArmedUntil = now + 5000;
             bar(Formatting.GOLD, "Run /ds reset again within 5s to confirm");
         }
+    }
+
+    /** Ends the current session and starts a fresh one. Settings are kept. */
+    public static void startNewSession(String reason) {
+        Session s = s();
+        if (!s.history.isEmpty() || s.elapsedMs >= 1000) s.logSessionEnd(reason, s.summary());
+        s.reset();
+        s.sessionDay = LocalDate.now().toString();
+        s.save();
+        s.logCsv(reason, "", 0, 0);
+        limitAlerted = false;
+        goalAlerted = false;
+    }
+
+    private static long lastDayCheck = 0;
+
+    /** Called every client tick (throttled to once a second): starts a new session when the local date changes. */
+    public static void checkNewDay() {
+        long now = System.currentTimeMillis();
+        if (now - lastDayCheck < 1000) return;
+        lastDayCheck = now;
+        Session s = s();
+        String today = LocalDate.now().toString();
+        if (s.sessionDay == null || s.sessionDay.isEmpty()) {
+            s.sessionDay = today;
+            s.save();
+        } else if (!s.sessionDay.equals(today)) {
+            if (s.dailyReset) {
+                boolean had = !s.history.isEmpty() || s.elapsedMs >= 1000;
+                String previous = s.summary();
+                startNewSession("NEW_DAY");
+                if (had) s.pendingNotice = previous;
+            } else {
+                s.sessionDay = today;
+                s.save();
+            }
+        }
+        if (s.pendingNotice != null && MinecraftClient.getInstance().player != null) {
+            chat(Formatting.GOLD, "[Tracker] New day: started a fresh session.");
+            chat(Formatting.GRAY, "Previous session: " + s.pendingNotice);
+            s.pendingNotice = null;
+        }
+    }
+
+    public static void toggleDailyReset() {
+        s().dailyReset = !s().dailyReset;
+        s().sessionDay = LocalDate.now().toString();
+        s().save();
+        bar(Formatting.GRAY, "New session every day at midnight " + (s().dailyReset ? "on" : "off"));
+    }
+
+    public static void toggleChatPreviews() {
+        s().chatPreviews = !s().chatPreviews;
+        s().save();
+        bar(Formatting.GRAY, "Auction / Spotify previews in chat " + (s().chatPreviews ? "on" : "off"));
+    }
+
+    public static void toggleAuctionStreamDelay() {
+        s().auctionStreamDelay = !s().auctionStreamDelay;
+        s().save();
+        bar(Formatting.GRAY, "Auction +" + AuctionState.STREAM_DELAY_SECONDS + "s stream delay "
+                + (s().auctionStreamDelay ? "on (applies to the next auction)" : "off"));
+    }
+
+    public static void toggleNametagRank() {
+        s().selfNametagRank = !s().selfNametagRank;
+        s().save();
+        bar(Formatting.GRAY, "Rank on own nametag " + (s().selfNametagRank ? "on" : "off"));
     }
 
     public static void toggleHud() {
@@ -282,7 +346,8 @@ public final class Actions {
     public static void announceAuctionStart(String item, long minBid, int seconds) {
         auctionChat(Text.literal("Started auction for ").formatted(Formatting.GRAY)
                 .append(Text.literal(item).formatted(Formatting.WHITE))
-                .append(Text.literal(" (min bid $" + Money.format(minBid) + ", " + TimeParse.format(seconds) + ")")
+                .append(Text.literal(" (min bid $" + Money.format(minBid) + ", " + TimeParse.format(seconds)
+                        + (s().auctionStreamDelay ? " +" + AuctionState.STREAM_DELAY_SECONDS + "s stream delay" : "") + ")")
                         .formatted(Formatting.GRAY)));
     }
 
@@ -499,6 +564,7 @@ public final class Actions {
         chat(Formatting.GOLD, "Donut Streamer (all local). Profit is read from payment messages in chat.");
         chat(Formatting.WHITE, "/ds  opens the tracker window. In chat, use the \"HUD editor\" button; drag elements to move.");
         chat(Formatting.WHITE, "/ds in|out <amt> [name]  /ds buy <amt> [item]  /ds sell <amt>  (manual entry)   /ds undo  /ds reset  /ds summary  /ds players");
+        chat(Formatting.WHITE, "/ds daily (new session every midnight)  /ds preview (auction/Spotify previews in chat)  /ds auction delay (+12s stream delay)  /ds nametag rank");
         chat(Formatting.WHITE, "/ds limit|goal <amt|off>  /ds tilt <2-20|off>  /ds rakeback <0.5-50|off>  /ds balance <amt|off>");
         chat(Formatting.WHITE, "/ds percent  /ds sells  /ds sellsource  /ds doubles  /ds sound  /ds names  /ds hud toggle|reset|all on|all off|scale <n>|<element>");
         chat(Formatting.AQUA, "Auctions (DonutSMP): B opens the browser, H shows/hides the panel.");
