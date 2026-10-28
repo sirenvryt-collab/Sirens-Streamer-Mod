@@ -1,5 +1,7 @@
 package com.donutstreamer.auction;
 
+import com.donutstreamer.DonutStreamerClient;
+import com.donutstreamer.Session;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -19,6 +21,9 @@ import java.util.Set;
  */
 public final class AuctionState {
     public static final AuctionState INSTANCE = new AuctionState();
+
+    /** Extra seconds added to an auction when the "stream delay" option is on. */
+    public static final int STREAM_DELAY_SECONDS = 12;
 
     public static final int BID_REJECTED = 0;   // no auction, below minimum, or not a valid amount
     public static final int BID_ACCEPTED = 1;   // valid bid, but not the highest
@@ -71,7 +76,9 @@ public final class AuctionState {
         this.currentStack = icon == null ? null : new ItemStack(icon);
         this.pendingResult = null;
         this.minimumBid = Math.max(0, minimumBid);
-        this.durationMillis = Math.max(1, durationSec) * 1000L;
+        Session cfg = DonutStreamerClient.session;
+        int extra = (cfg != null && cfg.auctionStreamDelay) ? STREAM_DELAY_SECONDS : 0;
+        this.durationMillis = (Math.max(1, durationSec) + extra) * 1000L;
         this.active = true;
         this.auctionEndTimeMillis = System.currentTimeMillis() + durationMillis;
         this.highestBid = 0;
