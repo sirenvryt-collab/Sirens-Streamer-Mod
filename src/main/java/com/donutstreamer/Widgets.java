@@ -153,6 +153,11 @@ public final class Widgets {
         }
     }
 
+    /** True when the chat-screen preview of an idle auction / Spotify panel is switched off (/ds preview). */
+    public static boolean previewHidden(W w, Session s) {
+        return !s.chatPreviews && (w == W.AUCTION || w == W.MUSIC) && !available(w, s);
+    }
+
     // ================= cached text / colour / width =================
     // Text is rebuilt only when the session changes (Session.version) or the timer's second ticks over,
     // not every frame. That removes all the per-frame String.format / regex work from the HUD.
