@@ -66,6 +66,13 @@ public final class HudEditor {
         rows.add(new Row("Hide coords in chat (stream mode)", () -> session().streamHideChatCoords,
                 () -> session().streamHideChatCoords = !session().streamHideChatCoords));
         rows.add(new Row("Own nametag in F5", () -> session().selfNametag, () -> session().selfNametag = !session().selfNametag));
+        rows.add(new Row("Rank on own nametag", () -> session().selfNametagRank, () -> session().selfNametagRank = !session().selfNametagRank));
+        rows.add(new Row("New session every midnight", () -> session().dailyReset, () -> {
+            session().dailyReset = !session().dailyReset;
+            session().sessionDay = java.time.LocalDate.now().toString();
+        }));
+        rows.add(new Row("Auction/Spotify previews in chat", () -> session().chatPreviews, () -> session().chatPreviews = !session().chatPreviews));
+        rows.add(new Row("Auction +12s stream delay", () -> session().auctionStreamDelay, () -> session().auctionStreamDelay = !session().auctionStreamDelay));
         rows.add(new Row("Sirens watermark", () -> session().watermark, () -> session().watermark = !session().watermark));
         rows.add(new Row("Sounds", () -> session().sound, () -> session().sound = !session().sound));
         rows.add(new Row("Show player names", () -> session().showNames, () -> session().showNames = !session().showNames));
@@ -125,7 +132,7 @@ public final class HudEditor {
         if (s.hudVisible) {
             for (Widgets.W w : Widgets.ALL) {
                 Session.WidgetCfg c = s.cfg(w);
-                if (!c.on) continue;
+                if (!c.on || Widgets.previewHidden(w, s)) continue;
                 if (dragging != w) HudRenderer.fit(c, w, s, mc, tr);
                 if (!Widgets.available(w, s)) HudRenderer.drawAt(ctx, mc, s, w, c);
                 int bw = Math.round(Widgets.width(w, s, tr) * s.scale);
