@@ -114,6 +114,11 @@ public final class Session {
     public boolean streamHideChatCoords = false;   // blank out "x, y, z" style coordinates in incoming chat while stream mode is on
     public boolean streamHideNames = true;   // hide player names on the HUD while stream mode is on
     public boolean selfNametag = true;       // show your own nametag in third person (F5), like others see it
+    public boolean selfNametagRank = true;   // also show the rank from your tab-list name on that nametag
+    public boolean dailyReset = true;        // start a fresh session automatically at local midnight
+    public String sessionDay = "";           // local date (yyyy-MM-dd) the current session belongs to
+    public boolean chatPreviews = true;      // chat screen: draw the auction / Spotify panels as previews when they have nothing to show
+    public boolean auctionStreamDelay = false;   // add 12 seconds to every auction so a delayed stream can still bid
     public boolean watermark = true;         // small blue "Sirens Streamer Mod" text, bottom left
     public boolean percentMode = false;      // show net as % of starting balance
     public boolean includeSells = false;     // count sell income in net profit
@@ -127,6 +132,9 @@ public final class Session {
     // ---- derived (not saved) ----
     public transient long net, received, sent, sold, biggestIn, biggestOut, peak, low, spent;
     public transient int wins, losses, streak, bestWinStreak, worstLossStreak;
+
+    /** Set when a new day started a fresh session; the previous summary is printed once a player is in a world. */
+    public transient String pendingNotice;
 
     /** Bumped on every change to data or settings; the HUD uses it to know when cached text is stale. */
     public transient long version;
@@ -439,6 +447,20 @@ public final class Session {
         if (goal < 0) goal = 0;
         if (tiltAlert != 0 && (tiltAlert < 2 || tiltAlert > 20)) tiltAlert = 0;
         if (!(rakebackPct >= 0 && rakebackPct <= 50)) rakebackPct = 0;
+    }
+
+    /** Appends one line to <game dir>/donutstreamer/sessions.log (summary of a finished session). */
+    public void logSessionEnd(String why, String summary) {
+        String line = Instant.now() + " [" + why + "] " + summary + "\n";
+        Path p = csvPath().resolveSibling("sessions.log");
+        submit(() -> {
+            try {
+                Files.createDirectories(p.getParent());
+                Files.writeString(p, line, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            } catch (IOException e) {
+                LOG.warn("Could not write sessions.log", e);
+            }
+        });
     }
 
     /** Queues a row for <game dir>/donutstreamer/bets.csv (written on the background thread). */
