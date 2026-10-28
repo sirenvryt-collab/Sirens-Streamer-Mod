@@ -150,6 +150,7 @@ public final class Commands {
         auction.then(literal("browser").executes(c -> { Actions.openAuctionBrowser(); return 1; }));
         auction.then(literal("track").executes(c -> { Actions.toggleAuctionTracking(); return 1; }));
         auction.then(literal("anywhere").executes(c -> { Actions.toggleAuctionAnywhere(); return 1; }));
+        auction.then(literal("delay").executes(c -> { Actions.toggleAuctionStreamDelay(); return 1; }));
         root.then(auction);
 
         // ---- Spotify remote ----
@@ -180,7 +181,11 @@ public final class Commands {
             .then(literal("chatcoords").executes(c -> { Actions.toggleStreamChatCoords(); return 1; }))
             .then(literal("names").executes(c -> { Actions.toggleStreamNames(); return 1; }))
             .then(literal("status").executes(c -> { Actions.streamStatus(); return 1; })));
-        root.then(literal("nametag").executes(c -> { Actions.toggleSelfNametag(); return 1; }));
+        root.then(literal("nametag").executes(c -> { Actions.toggleSelfNametag(); return 1; })
+            .then(literal("rank").executes(c -> { Actions.toggleNametagRank(); return 1; })));
+        root.then(literal("daily").executes(c -> { Actions.toggleDailyReset(); return 1; }));
+        root.then(literal("preview").executes(c -> { Actions.toggleChatPreviews(); return 1; }));
+        root.then(literal("new").executes(c -> { Actions.requestReset(); return 1; }));
         root.then(literal("watermark").executes(c -> { Actions.toggleWatermark(); return 1; }));
 
         // ---- Twitch / YouTube chat on screen ----
