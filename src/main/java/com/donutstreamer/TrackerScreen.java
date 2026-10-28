@@ -2,6 +2,7 @@ package com.donutstreamer;
 
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 import java.util.ArrayList;
@@ -15,8 +16,39 @@ public final class TrackerScreen extends Screen {
     private static final int INSET = 0xFF0A0E13;
     private static final int BORDER = 0xFF30363D;
 
+    private static final String NEW_LABEL = "New session";
+    private ButtonWidget newSessionButton;
+    private long armedUntil = 0;
+
     public TrackerScreen() {
         super(Text.literal("Donut Streamer Tracker"));
+    }
+
+    @Override
+    protected void init() {
+        int pw = Math.min(this.width - 20, 400);
+        int ph = Math.min(this.height - 20, 290);
+        int px = (this.width - pw) / 2;
+        int py = (this.height - ph) / 2;
+        int bw = 100, bh = 14;
+        newSessionButton = ButtonWidget.builder(Text.literal(NEW_LABEL), b -> onNewSession())
+                .dimensions(px + pw - 8 - bw, py + ph - bh - 4, bw, bh)
+                .build();
+        this.addDrawableChild(newSessionButton);
+    }
+
+    /** Two clicks within 5 seconds: the first arms it, the second starts a fresh session. */
+    private void onNewSession() {
+        long now = System.currentTimeMillis();
+        if (now <= armedUntil) {
+            armedUntil = 0;
+            newSessionButton.setMessage(Text.literal(NEW_LABEL));
+            Actions.startNewSession("RESET");
+            Actions.bar(net.minecraft.util.Formatting.YELLOW, "New session started");
+        } else {
+            armedUntil = now + 5000;
+            newSessionButton.setMessage(Text.literal("Click again to confirm"));
+        }
     }
 
     @Override
@@ -169,6 +201,13 @@ public final class TrackerScreen extends Screen {
 
         ctx.drawTextWithShadow(this.textRenderer, "Esc to close  |  /ds help for commands",
                 x, py + ph - 12, Widgets.GRAY);
+
+        // The button was drawn by super.render() before the panel, so draw it again on top.
+        if (armedUntil != 0 && System.currentTimeMillis() > armedUntil) {
+            armedUntil = 0;
+            newSessionButton.setMessage(Text.literal(NEW_LABEL));
+        }
+        newSessionButton.render(ctx, mouseX, mouseY, delta);
     }
 
     private static void addChip(List<String[]> chips, List<Integer> colors, String label, String value, int color) {
